@@ -248,9 +248,16 @@ def get_previous_business_day(date_obj):
     return _get_next_timedelta(date_obj, partial(timedelta, days=-1), is_business_day)
 
 
-def ceil_datetime(datetime_obj, delta):
+def ceil_datetime(datetime_obj, delta=None, **delta_kwargs):
+    delta = delta or datetime.timedelta(**delta_kwargs)
     min_datetime = datetime.datetime.min if not datetime_obj.tzinfo else datetime.datetime.min.replace(tzinfo=datetime_obj.tzinfo)
     return datetime_obj + (min_datetime - datetime_obj) % delta
+
+
+def floor_datetime(datetime_obj, delta=None, **delta_kwargs):
+    delta = delta or datetime.timedelta(**delta_kwargs)
+    min_datetime = datetime.datetime.min if not datetime_obj.tzinfo else datetime.datetime.min.replace(tzinfo=datetime_obj.tzinfo)
+    return datetime_obj - (datetime_obj - min_datetime) % delta
 
 
 def get_next_even_15_minutes(datetime_obj):
