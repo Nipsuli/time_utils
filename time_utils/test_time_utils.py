@@ -343,3 +343,19 @@ def test_first_moment_of_month():
 def test_last_moment_of_month():
     ret = time_utils.last_moment_of_month(2018, 11, 'Europe/Helsinki')
     assert ret == pytz.timezone('Europe/Helsinki').localize(datetime.datetime(2018, 11, 30, 23, 59, 59))
+
+
+def test_ceil_datetime():
+    dt = datetime.datetime(2019, 3, 19, 7, 38, 4, 443543, tzinfo=pytz.utc)
+    expected = datetime.datetime(2019, 3, 19, 7, 39, tzinfo=pytz.utc)
+    ret1 = time_utils.ceil_datetime(dt, datetime.timedelta(minutes=1))
+    ret2 = time_utils.ceil_datetime(dt, minutes=1)
+    assert expected == ret1 == ret2
+
+
+def test_floor_datetime():
+    dt = datetime.datetime(2019, 3, 19, 7, 38, 4, 443543, tzinfo=pytz.utc)
+    expected = datetime.datetime(2019, 3, 19, 7, 38, tzinfo=pytz.utc)
+    ret1 = time_utils.floor_datetime(dt, datetime.timedelta(minutes=1))
+    ret2 = time_utils.floor_datetime(dt, minutes=1)
+    assert expected == ret1 == ret2
