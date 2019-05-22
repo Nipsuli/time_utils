@@ -7,7 +7,7 @@ with open("README.md", "r") as f:
 
 setup(
     name="time_utils",
-    version="0.0.1",
+    version="0.1.1",
     description="Collection of time related utils",
     long_description=readme,
     long_description_content_type="text/markdown",
