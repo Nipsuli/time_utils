@@ -1,16 +1,30 @@
 import sys
+import re
 import pytz
 import datetime
 import calendar
-# import warnings
 import logging
 from functools import partial
 from tzlocal import windows_tz
 from dateutil import parser as dateutil_parser
+from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzoffset
 
 
 logger = logging.getLogger(__name__)
+
+
+ISO8601_DURATION = re.compile(
+    r"^(?P<sign>[+-])?"
+    r"P(?!\b)"
+    r"(?P<years>[0-9]+([,.][0-9]+)?Y)?"
+    r"(?P<months>[0-9]+([,.][0-9]+)?M)?"
+    r"(?P<weeks>[0-9]+([,.][0-9]+)?W)?"
+    r"(?P<days>[0-9]+([,.][0-9]+)?D)?"
+    r"((?P<separator>T)(?P<hours>[0-9]+([,.][0-9]+)?H)?"
+    r"(?P<minutes>[0-9]+([,.][0-9]+)?M)?"
+    r"(?P<seconds>[0-9]+([,.][0-9]+)?S)?)?$"
+)
 
 
 # microsoft has their own timezone index ¿ⓧ_ⓧﮌ supporting those as well
@@ -271,3 +285,84 @@ def first_moment_of_month(year, month, timezone):
 def last_moment_of_month(year, month, timezone):
     day = calendar.monthrange(year, month)[1]
     return end_of_day(datetime.date(year, month, day), timezone)
+
+
+def _parse_single_duration_value(val):
+    if val is None:
+        return 0
+    else:
+        # This decimal fraction may be specified with either a comma or a full stop, as in "P0,5Y" or "P0.5Y"
+        return float(val[:-1].replace(',', '.'))
+
+
+def _parse_duration_years(year_val):
+    if year_val is None:
+        return 0, 0
+    else:
+        val = _parse_single_duration_value(year_val)
+        years = int(val)
+
+        if years == val:
+            return years, 0
+        else:
+            fracs = val - years
+            months = fracs * 12
+            if int(months) != months:
+                raise ValueError(f'Decimal reprecentation "{year_val}" of year is ambiguous, and not supported')
+            return years, months
+
+
+def _parse_duration_months(month_val):
+    if month_val is None:
+        return 0
+    else:
+        val = _parse_single_duration_value(month_val)
+        if int(val) != val:
+            raise ValueError(f'Non-integer month "{month_val}" is ambiguous, and not supported.')
+        else:
+            return int(val)
+
+
+def parse_iso_duration(duration_str):
+    match = ISO8601_DURATION.match(duration_str)
+    if not match:
+        # case P<date>T<time>
+        if duration_str.startswith('P'):
+            try:
+                dt = datetime_parse(duration_str[1:])
+                return relativedelta(
+                    years=dt.year,
+                    months=dt.month,
+                    days=dt.day,
+                    hours=dt.hour,
+                    minutes=dt.minute,
+                    seconds=dt.second
+                )
+            except Exception:
+                pass
+
+        raise ValueError(f'Could not parse {duration_str}')
+
+    matches = match.groupdict()
+
+    if matches['sign'] == '-':
+        sign = -1
+    else:
+        sign = 1
+
+    years, extra_months = _parse_duration_years(matches['years'])
+
+    return relativedelta(
+        years=sign * years,
+        months=sign * (_parse_duration_months(matches['months']) + extra_months),
+        days=sign * _parse_single_duration_value(matches['days']),
+        weeks=sign * _parse_single_duration_value(matches['weeks']),
+        hours=sign * _parse_single_duration_value(matches['hours']),
+        minutes=sign * _parse_single_duration_value(matches['minutes']),
+        seconds=sign * _parse_single_duration_value(matches['seconds'])
+    )
+
+
+def relativedelta_to_timedelta(relativedelta_obj, reference_date=None):
+    reference_date = reference_date or now()
+    return reference_date + relativedelta_obj - reference_date

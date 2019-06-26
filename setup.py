@@ -18,9 +18,9 @@ setup(
     packages=["time_utils"],
     install_requires=[
         "python_version>='3.6'",
-        "pytz>=2018.7",
+        "pytz>=2019.1",
         "tzlocal>=1.5.1",
-        "python-dateutil>=2.7.5"
+        "python-dateutil>=2.8.0"
     ],
     python_requires=">=3.6",
     keywords="time utils timezone datetime",

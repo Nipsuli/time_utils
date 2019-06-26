@@ -3,6 +3,7 @@ import pytz
 import pytest
 from freezegun import freeze_time
 from dateutil import parser as dateutil_parser
+from dateutil.relativedelta import relativedelta
 from dateutil.tz import tzoffset
 from unittest.mock import patch
 
@@ -359,3 +360,63 @@ def test_floor_datetime():
     ret1 = time_utils.floor_datetime(dt, datetime.timedelta(minutes=1))
     ret2 = time_utils.floor_datetime(dt, minutes=1)
     assert expected == ret1 == ret2
+
+
+def test_parse_iso_duration():
+
+    test_set = [
+        ['P18Y9M4DT11H9M8S', relativedelta(years=18, months=9, days=4, hours=11, minutes=9, seconds=8)],
+        ['P2W', relativedelta(weeks=2)],
+        ['P3Y6M4DT12H30M5S', relativedelta(years=3, months=6, days=4, hours=12, minutes=30, seconds=5)],
+        ['P23DT23H', relativedelta(hours=23, days=23)],
+        ['P4Y', relativedelta(years=4)],
+        ['P1M', relativedelta(months=1)],
+        ['PT1M', relativedelta(minutes=1)],
+        ['P0.5Y', relativedelta(months=6)],
+        ['-P0.5Y', relativedelta(months=-6)],
+        ['PT36H', relativedelta(hours=36)],
+        ['P1DT12H', relativedelta(days=1, hours=12)],
+        ['+P11D', relativedelta(days=11)],
+        ['-P2W', relativedelta(weeks=-2)],
+        ['-P2.2W', relativedelta(weeks=-2.2)],
+        ['P1DT2H3M4S', relativedelta(days=1, hours=2, minutes=3, seconds=4)],
+        ['P1DT2H3M', relativedelta(days=1, hours=2, minutes=3)],
+        ['P1DT2H', relativedelta(days=1, hours=2)],
+        ['PT2H', relativedelta(hours=2)],
+        ['PT2.3H', relativedelta(hours=2.3)],
+        ['PT2H3M4S', relativedelta(hours=2, minutes=3, seconds=4)],
+        ['PT3M4S', relativedelta(minutes=3, seconds=4)],
+        ['PT22S', relativedelta(seconds=22)],
+        ['PT22.22S', relativedelta(seconds=22.22)],
+        ['-P2Y', relativedelta(years=-2)],
+        ['-P3Y6M4DT12H30M5S', relativedelta(years=-3, months=-6, days=-4, hours=-12, minutes=-30, seconds=-5)],
+        ['-P1DT2H3M4S', relativedelta(days=-1, hours=-2, minutes=-3, seconds=-4)],
+        ['P0018-09-04T11:09:08', relativedelta(years=18, months=9, days=4, hours=11, minutes=9, seconds=8)],
+    ]
+
+    for case, expected in test_set:
+        assert time_utils.parse_iso_duration(case) == expected
+
+
+def test_parse_iso_duration_raises_on_invalid_input():
+    with pytest.raises(ValueError) as excinfo:
+        time_utils.parse_iso_duration('foobar')
+
+    assert 'foobar' in str(excinfo)
+
+
+def test_relativedelta_to_timedelta():
+    r = relativedelta(days=1)
+    res = time_utils.relativedelta_to_timedelta(r)
+    assert isinstance(res, datetime.timedelta)
+    assert res.days == 1
+    assert res.total_seconds() == 1 * 24 * 60 * 60
+
+
+def test_relativedelta_to_timedelta_long_time():
+    r = relativedelta(years=1)
+    d = datetime.datetime(2019, 6, 26, 13, 26, 0, tzinfo=pytz.utc)
+    res = time_utils.relativedelta_to_timedelta(r, reference_date=d)
+    assert isinstance(res, datetime.timedelta)
+    assert res.days == 366  # 2020 is leapyear ;)
+    assert res.total_seconds() == 366 * 24 * 60 * 60
